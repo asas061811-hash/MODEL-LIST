@@ -18,13 +18,11 @@
         .plane-card:active {
             transform: scale(0.98);
         }
-        /* 隱藏滾動條但保持功能 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="pb-20">
 
-    <!-- 頂部標題 -->
     <header class="bg-blue-600 text-white p-6 rounded-b-3xl shadow-lg mb-6">
         <h1 class="text-2xl font-bold flex items-center gap-2">
             <span>✈️</span> 我的停機坪總管
@@ -34,7 +32,6 @@
 
     <main class="px-4 space-y-6">
         
-        <!-- 雲端設定按鈕 (點擊開啟) -->
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
             <button onclick="toggleSettings()" class="flex items-center justify-between w-full text-gray-600 font-medium">
                 <span class="flex items-center gap-2">⚙️ 雲端同步設定</span>
@@ -48,7 +45,6 @@
             </div>
         </div>
 
-        <!-- 數據摘要 -->
         <section class="grid grid-cols-2 gap-3">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
                 <div class="text-gray-500 text-xs font-bold mb-1">機型種類</div>
@@ -68,7 +64,6 @@
             </div>
         </section>
 
-        <!-- 新增表單 -->
         <section class="bg-white p-5 rounded-2xl shadow-md space-y-4 border border-blue-50">
             <h3 class="font-bold text-gray-700 flex items-center gap-2">
                 <span class="text-blue-500">＋</span> 新增收藏紀錄
@@ -96,49 +91,36 @@
             </button>
         </section>
 
-        <!-- 收藏清單 -->
         <section class="space-y-4">
             <div class="flex items-center justify-between">
                 <h3 class="font-bold text-gray-700">模型清單</h3>
                 <button onclick="exportData()" class="text-xs text-blue-500 underline">導出 CSV</button>
             </div>
             
-            <!-- 搜尋框 -->
             <div class="relative">
                 <input type="text" id="searchInput" oninput="render()" placeholder="🔍 搜尋機型 (例如: A350, 777)..." class="w-full p-3 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
             </div>
 
-            <!-- 清單與左側頁籤佈局 -->
             <div class="flex gap-3 items-start">
-                
-                <!-- 左側國籍頁籤 -->
                 <div class="w-24 shrink-0 flex flex-col gap-2 sticky top-4 max-h-[65vh] overflow-y-auto no-scrollbar pb-10">
-                    <div id="nationTabs" class="flex flex-col gap-2">
-                        <!-- 頁籤由 JS 生成 -->
-                    </div>
+                    <div id="nationTabs" class="flex flex-col gap-2"></div>
                 </div>
 
-                <!-- 右側模型清單 -->
-                <div id="planeList" class="flex-1 space-y-3 pb-10">
-                    <!-- 內容由 JS 生成 -->
-                </div>
-
+                <div id="planeList" class="flex-1 space-y-3 pb-10"></div>
             </div>
         </section>
 
     </main>
 
-    <!-- 操作提示彈窗 -->
-    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-sm opacity-0 transition-opacity pointer-events-none z-50">
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-sm opacity-0 transition-opacity pointer-events-none z-50 whitespace-nowrap">
         已同步到雲端
     </div>
 
     <script>
         let planes = JSON.parse(localStorage.getItem('plane_db')) || [];
         let gasUrl = localStorage.getItem('gas_url') || "";
-        let currentNationFilter = "全部"; // 新增：當前選擇的國籍過濾器
+        let currentNationFilter = "全部";
 
-        // 初始化
         window.onload = () => {
             document.getElementById('gasUrl').value = gasUrl;
             updateSyncStatus();
@@ -146,8 +128,7 @@
         };
 
         function toggleSettings() {
-            const panel = document.getElementById('settingsPanel');
-            panel.classList.toggle('hidden');
+            document.getElementById('settingsPanel').classList.toggle('hidden');
         }
 
         function saveSettings() {
@@ -167,7 +148,6 @@
             }
         }
 
-        // 根據廠牌名稱產生不同顏色的標籤
         function getBrandColor(brand) {
             if (!brand) return 'bg-gray-100 text-gray-700';
             const colors = [
@@ -184,7 +164,6 @@
             return colors[Math.abs(hash) % colors.length];
         }
 
-        // 新增：切換國籍頁籤
         function setNationFilter(nation) {
             currentNationFilter = nation;
             render();
@@ -193,24 +172,15 @@
         function render() {
             const list = document.getElementById('planeList');
             const tabsContainer = document.getElementById('nationTabs');
-            const totalTypesEl = document.getElementById('totalTypes');
-            const totalPlanesEl = document.getElementById('totalPlanes');
-            const totalInProductionEl = document.getElementById('totalInProduction');
-            const totalCompletedEl = document.getElementById('totalCompleted');
             const searchKeyword = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
             
             list.innerHTML = '';
             tabsContainer.innerHTML = '';
             
-            let totalPlanes = 0;
-            let totalInProduction = 0;
-            let totalCompleted = 0;
-            let renderedCount = 0;
+            let totalPlanes = 0, totalInProduction = 0, totalCompleted = 0, renderedCount = 0;
 
-            // 提取所有獨立的國籍 (去除空白與重複)
             const nations = ['全部', ...new Set(planes.map(p => p.nation).filter(n => n.trim() !== ''))];
 
-            // 渲染左側頁籤
             nations.forEach(nation => {
                 const isActive = nation === currentNationFilter;
                 const activeClass = isActive 
@@ -224,31 +194,20 @@
                 `;
             });
 
-            // 如果目前選中的國籍被刪除完了，自動切回「全部」
-            if (!nations.includes(currentNationFilter)) {
-                currentNationFilter = '全部';
-                // 為了避免無限迴圈，直接重新呼叫 render 會比較保險，但這裡我們只是改掉變數，接下來的迴圈會用 '全部'
-            }
+            if (!nations.includes(currentNationFilter)) currentNationFilter = '全部';
 
             planes.forEach((item, index) => {
-                // 相容舊資料，若無 inProduction 則初始化為 0
-                if (item.inProduction === undefined) item.inProduction = 0;
-                if (item.completed === undefined) item.completed = 0;
+                // 強制確保所有數值都不會是 undefined
+                item.count = item.count || 0;
+                item.inProduction = item.inProduction || 0;
+                item.completed = item.completed || 0;
                 
-                // 統計總數（不受搜尋與頁籤過濾影響，顯示真實總庫存）
                 totalPlanes += item.count;
                 totalInProduction += item.inProduction;
                 totalCompleted += item.completed;
 
-                // 頁籤過濾邏輯
-                if (currentNationFilter !== '全部' && item.nation !== currentNationFilter) {
-                    return; // 跳過非目前國籍的項目
-                }
-
-                // 搜尋過濾邏輯
-                if (searchKeyword && !item.acType.toLowerCase().includes(searchKeyword)) {
-                    return; // 跳過不符合的項目
-                }
+                if (currentNationFilter !== '全部' && item.nation !== currentNationFilter) return;
+                if (searchKeyword && !item.acType.toLowerCase().includes(searchKeyword)) return;
 
                 renderedCount++;
                 list.innerHTML += `
@@ -269,63 +228,48 @@
                         </div>
                         
                         <div class="grid grid-cols-3 gap-2 pt-3 border-t border-gray-50 text-center">
-                            <!-- 庫存管理 -->
                             <div class="bg-gray-50 rounded-xl p-2 flex flex-col items-center justify-between">
                                 <div>
                                     <div class="text-[10px] text-gray-500 uppercase font-bold">庫存</div>
                                     <div class="text-xl font-black text-blue-600 leading-none my-2">${item.count}</div>
                                 </div>
                                 <div class="flex gap-1 w-full mt-auto">
-                                    <button onclick="updateCount(${index}, -1)" class="flex-1 h-8 bg-white text-gray-800 rounded-lg flex items-center justify-center text-lg shadow-sm active:bg-red-500 active:text-white transition-colors" ${item.count <= 0 ? 'disabled style="opacity:0.5;"' : ''}>
-                                        －
-                                    </button>
-                                    <button onclick="updateCount(${index}, 1)" class="flex-1 h-8 bg-white text-gray-800 rounded-lg flex items-center justify-center text-lg shadow-sm active:bg-blue-600 active:text-white transition-colors">
-                                        ＋
-                                    </button>
+                                    <button onclick="updateCount(${index}, -1)" class="flex-1 h-8 bg-white text-gray-800 rounded-lg flex items-center justify-center text-lg shadow-sm active:bg-red-500 active:text-white transition-colors" ${item.count <= 0 ? 'disabled style="opacity:0.5;"' : ''}>－</button>
+                                    <button onclick="updateCount(${index}, 1)" class="flex-1 h-8 bg-white text-gray-800 rounded-lg flex items-center justify-center text-lg shadow-sm active:bg-blue-600 active:text-white transition-colors">＋</button>
                                 </div>
                             </div>
 
-                            <!-- 製作中管理 -->
                             <div class="bg-orange-50 rounded-xl p-2 flex flex-col items-center justify-between border border-orange-100">
                                 <div>
                                     <div class="text-[10px] text-orange-500 uppercase font-bold">製作中</div>
                                     <div class="text-xl font-black text-orange-600 leading-none my-2">${item.inProduction}</div>
                                 </div>
-                                <button onclick="startProduction(${index})" 
-                                        class="w-full h-8 mt-auto ${item.count > 0 ? 'bg-orange-500' : 'bg-gray-200'} text-white rounded-lg flex items-center justify-center text-sm shadow-sm active:scale-95 transition-all" ${item.count <= 0 ? 'disabled' : ''}>
-                                    🔨
-                                </button>
+                                <button onclick="startProduction(${index})" class="w-full h-8 mt-auto ${item.count > 0 ? 'bg-orange-500' : 'bg-gray-200'} text-white rounded-lg flex items-center justify-center text-sm shadow-sm active:scale-95 transition-all" ${item.count <= 0 ? 'disabled' : ''}>🔨</button>
                             </div>
 
-                            <!-- 製作完成管理 -->
                             <div class="bg-green-50 rounded-xl p-2 flex flex-col items-center justify-between border border-green-100">
                                 <div>
                                     <div class="text-[10px] text-green-500 uppercase font-bold">已完成</div>
                                     <div class="text-xl font-black text-green-600 leading-none my-2">${item.completed}</div>
                                 </div>
-                                <button onclick="finishProduction(${index})" 
-                                        class="w-full h-8 mt-auto ${item.inProduction > 0 ? 'bg-green-500' : 'bg-gray-200'} text-white rounded-lg flex items-center justify-center text-sm shadow-sm active:scale-95 transition-all" ${item.inProduction <= 0 ? 'disabled' : ''}>
-                                    ✅
-                                </button>
+                                <button onclick="finishProduction(${index})" class="w-full h-8 mt-auto ${item.inProduction > 0 ? 'bg-green-500' : 'bg-gray-200'} text-white rounded-lg flex items-center justify-center text-sm shadow-sm active:scale-95 transition-all" ${item.inProduction <= 0 ? 'disabled' : ''}>✅</button>
                             </div>
                         </div>
                     </div>
                 `;
             });
 
-            // 處理空狀態提示
             if (renderedCount === 0) {
-                if (planes.length === 0) {
-                    list.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm w-full">尚無收藏，快新增第一架飛機吧！</div>`;
-                } else {
-                    list.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm w-full">目前分類找不到符合的模型</div>`;
-                }
+                list.innerHTML = planes.length === 0 
+                    ? `<div class="text-center py-10 text-gray-400 text-sm w-full">尚無收藏，快新增第一架飛機吧！</div>`
+                    : `<div class="text-center py-10 text-gray-400 text-sm w-full">目前分類找不到符合的模型</div>`;
             }
 
-            totalTypesEl.innerText = planes.length;
-            totalPlanesEl.innerText = totalPlanes;
-            totalInProductionEl.innerText = totalInProduction;
-            if(totalCompletedEl) totalCompletedEl.innerText = totalCompleted;
+            document.getElementById('totalTypes').innerText = planes.length;
+            document.getElementById('totalPlanes').innerText = totalPlanes;
+            document.getElementById('totalInProduction').innerText = totalInProduction;
+            document.getElementById('totalCompleted').innerText = totalCompleted;
+            
             localStorage.setItem('plane_db', JSON.stringify(planes));
         }
 
@@ -338,7 +282,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(item)
                 });
-                showToast("雲端同步成功");
+                showToast(item.action === "delete" ? "已從雲端刪除" : "雲端同步成功");
             } catch (e) {
                 console.error("同步失敗", e);
             }
@@ -355,15 +299,7 @@
                 return;
             }
 
-            const newItem = { 
-                brand, 
-                nation, 
-                acType, 
-                model, 
-                count: 1,
-                inProduction: 0,
-                completed: 0 
-            };
+            const newItem = { brand, nation, acType, model, count: 1, inProduction: 0, completed: 0 };
             planes.push(newItem);
             render();
             syncToCloud(newItem);
@@ -375,7 +311,7 @@
         }
 
         function updateCount(index, val) {
-            if (planes[index].count + val < 0) return; // 避免庫存變為負數
+            if (planes[index].count + val < 0) return;
             planes[index].count += val;
             render();
             syncToCloud(planes[index]);
@@ -388,8 +324,6 @@
                 render();
                 syncToCloud(planes[index]);
                 showToast("開始製作！庫存已扣除");
-            } else {
-                showToast("庫存不足，無法開始製作");
             }
         }
 
@@ -400,14 +334,15 @@
                 render();
                 syncToCloud(planes[index]);
                 showToast("✅ 恭喜！模型製作完成");
-            } else {
-                showToast("目前沒有正在製作中的模型");
             }
         }
 
         function deleteItem(index) {
             if(confirm("確定要移除這項紀錄嗎？")) {
-                planes.splice(index, 1);
+                const itemToDelete = planes[index];
+                itemToDelete.action = "delete"; // 標記為刪除，通知雲端
+                syncToCloud(itemToDelete);      // 先發送指令給雲端
+                planes.splice(index, 1);        // 再從本機刪除
                 render();
             }
         }
