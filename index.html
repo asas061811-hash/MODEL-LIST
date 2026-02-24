@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>飛行員清單 - 模型統計 App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .plane-card {
+            transition: all 0.2s ease;
+        }
+        .plane-card:active {
+            transform: scale(0.98);
+        }
+        /* 隱藏滾動條但保持功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- 頂部標題 -->
+    <header class="bg-blue-600 text-white p-6 rounded-b-3xl shadow-lg mb-6">
+        <h1 class="text-2xl font-bold flex items-center gap-2">
+            <span>✈️</span> 我的停機坪總管
+        </h1>
+        <p class="text-blue-100 text-sm mt-1">追蹤收藏與製作進度，掌握每一架雲端記憶</p>
+    </header>
+
+    <main class="px-4 space-y-6">
+        
+        <!-- 雲端設定按鈕 (點擊開啟) -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <button onclick="toggleSettings()" class="flex items-center justify-between w-full text-gray-600 font-medium">
+                <span class="flex items-center gap-2">⚙️ 雲端同步設定</span>
+                <span id="syncStatus" class="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-400">尚未連線</span>
+            </button>
+            <div id="settingsPanel" class="hidden mt-4 pt-4 border-t border-dashed space-y-3">
+                <p class="text-xs text-gray-500">請貼上您的 Google Apps Script 部署網址：</p>
+                <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/..." 
+                       class="w-full text-sm p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="saveSettings()" class="w-full bg-blue-50 text-blue-600 py-2 rounded-lg text-sm font-bold">儲存設定</button>
+            </div>
+        </div>
+
+        <!-- 數據摘要 -->
+        <section class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-gray-500 text-xs font-bold mb-1">機型種類</div>
+                <div id="totalTypes" class="text-xl font-bold text-gray-800">0</div>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+                <div class="text-gray-500 text-xs font-bold mb-1">總庫存數</div>
+                <div id="totalPlanes" class="text-xl font-bold text-blue-600">0</div>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-orange-400">
+                <div class="text-orange-400 text-xs font-bold mb-1">製作中</div>
+                <div id="totalInProduction" class="text-xl font-bold text-orange-500">0</div>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 border-l-4 border-l-green-400">
+                <div class="text-green-500 text-xs font-bold mb-1">製作完成</div>
+                <div id="totalCompleted" class="text-xl font-bold text-green-600">0</div>
+            </div>
+        </section>
+
+        <!-- 新增表單 -->
+        <section class="bg-white p-5 rounded-2xl shadow-md space-y-4 border border-blue-50">
+            <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                <span class="text-blue-500">＋</span> 新增收藏紀錄
+            </h3>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">廠牌</label>
+                    <input type="text" id="brand" placeholder="例如: Phoenix" class="w-full p-2 bg-gray-50 rounded-lg text-sm focus:bg-white border-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">國籍</label>
+                    <input type="text" id="nation" placeholder="例如: 台灣" class="w-full p-2 bg-gray-50 rounded-lg text-sm focus:bg-white border-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">機型</label>
+                    <input type="text" id="acType" placeholder="例如: A350" class="w-full p-2 bg-gray-50 rounded-lg text-sm focus:bg-white border-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">型號</label>
+                    <input type="text" id="model" placeholder="例如: B-18901" class="w-full p-2 bg-gray-50 rounded-lg text-sm focus:bg-white border-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="addPlane()" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-blue-200 shadow-lg active:bg-blue-700">
+                確認入庫
+            </button>
+        </section>
+
+        <!-- 收藏清單 -->
+        <section class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-gray-700">模型清單</h3>
+                <button onclick="exportData()" class="text-xs text-blue-500 underline">導出 CSV</button>
+            </div>
+            
+            <!-- 搜尋框 -->
+            <div class="relative">
+                <input type="text" id="searchInput" oninput="render()" placeholder="🔍 搜尋機型 (例如: A350, 777)..." class="w-full p-3 bg-white border border-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
+            </div>
+
+            <!-- 清單與左側頁籤佈局 -->
+            <div class="flex gap-3 items-start">
+                
+                <!-- 左側國籍頁籤 -->
+                <div class="w-24 shrink-0 flex flex-col gap-2 sticky top-4 max-h-[65vh] overflow-y-auto no-scrollbar pb-10">
+                    <div id="nationTabs" class="flex flex-col gap-2">
+                        <!-- 頁籤由 JS 生成 -->
+                    </div>
+                </div>
+
+                <!-- 右側模型清單 -->
+                <div id="planeList" class="flex-1 space-y-3 pb-10">
+                    <!-- 內容由 JS 生成 -->
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 操作提示彈窗 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full text-sm opacity-0 transition-opacity pointer-events-none z-50">
+        已同步到雲端
+    </div>
+
+    <script>
+        let planes = JSON.parse(localStorage.getItem('plane_db')) || [];
+        let gasUrl = localStorage.getItem('gas_url') || "";
+        let currentNationFilter = "全部"; // 新增：當前選擇的國籍過濾器
+
+        // 初始化
+        window.onload = () => {
+            document.getElementById('gasUrl').value = gasUrl;
+            updateSyncStatus();
+            render();
+        };
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        function saveSettings() {
+            gasUrl = document.getElementById('gasUrl').value.trim();
+            localStorage.setItem('gas_url', gasUrl);
+            updateSyncStatus();
+            showToast("設定已儲存");
+            toggleSettings();
+        }
+
+        function updateSyncStatus() {
+            const status = document.getElementById('syncStatus');
+            if(gasUrl) {
+                status.innerText = "雲端模式已開啟";
+                status.classList.replace('bg-gray-100', 'bg-green-100');
+                status.classList.replace('text-gray-400', 'text-green-600');
+            }
+        }
+
+        // 根據廠牌名稱產生不同顏色的標籤
+        function getBrandColor(brand) {
+            if (!brand) return 'bg-gray-100 text-gray-700';
+            const colors = [
+                'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700',
+                'bg-purple-100 text-purple-700', 'bg-pink-100 text-pink-700',
+                'bg-yellow-100 text-yellow-800', 'bg-indigo-100 text-indigo-700',
+                'bg-red-100 text-red-700', 'bg-teal-100 text-teal-700',
+                'bg-orange-100 text-orange-700', 'bg-cyan-100 text-cyan-700'
+            ];
+            let hash = 0;
+            for (let i = 0; i < brand.length; i++) {
+                hash = brand.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        // 新增：切換國籍頁籤
+        function setNationFilter(nation) {
+            currentNationFilter = nation;
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('planeList');
+            const tabsContainer = document.getElementById('nationTabs');
+            const totalTypesEl = document.getElementById('totalTypes');
+            const totalPlanesEl = document.getElementById('totalPlanes');
+            const totalInProductionEl = document.getElementById('totalInProduction');
+            const totalCompletedEl = document.getElementById('totalCompleted');
+            const searchKeyword = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase().trim() : '';
+            
+            list.innerHTML = '';
+            tabsContainer.innerHTML = '';
+            
+            let totalPlanes = 0;
+            let totalInProduction = 0;
+            let totalCompleted = 0;
+            let renderedCount = 0;
+
+            // 提取所有獨立的國籍 (去除空白與重複)
+            const nations = ['全部', ...new Set(planes.map(p => p.nation).filter(n => n.trim() !== ''))];
+
+            // 渲染左側頁籤
+            nations.forEach(nation => {
+                const isActive = nation === currentNationFilter;
+                const activeClass = isActive 
+                    ? 'bg-blue-600 text-white shadow-md' 
+                    : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50';
+                
+                tabsContainer.innerHTML += `
+                    <button onclick="setNationFilter('${nation}')" class="w-full text-left px-2 py-3 rounded-xl text-xs font-bold transition-all ${activeClass} break-words">
+                        ${nation}
+                    </button>
+                `;
+            });
+
+            // 如果目前選中的國籍被刪除完了，自動切回「全部」
+            if (!nations.includes(currentNationFilter)) {
+                currentNationFilter = '全部';
+                // 為了避免無限迴圈，直接重新呼叫 render 會比較保險，但這裡我們只是改掉變數，接下來的迴圈會用 '全部'
+            }
+
+            planes.forEach((item, index) => {
+                // 相容舊資料，若無 inProduction 則初始化為 0
+                if (item.inProduction === undefined) item.inProduction = 0;
+                if (item.completed === undefined) item.completed = 0;
+                
+                // 統計總數（不受搜尋與頁籤過濾影響，顯示真實總庫存）
+                totalPlanes += item.count;
+                totalInProduction += item.inProduction;
+                totalCompleted += item.completed;
+
+                // 頁籤過濾邏輯
+                if (currentNationFilter !== '全部' && item.nation !== currentNationFilter) {
+                    return; // 跳過非目前國籍的項目
+                }
+
+                // 搜尋過濾邏輯
+                if (searchKeyword && !item.acType.toLowerCase().includes(searchKeyword)) {
+                    return; // 跳過不符合的項目
+                }
+
+                renderedCount++;
+                list.innerHTML += `
+                    <div class="plane-card bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="${getBrandColor(item.brand)} text-sm px-2 py-0.5 rounded font-bold">${item.brand}</span>
+                                    <span class="text-black text-base font-bold">${item.nation}</span>
+                                </div>
+                                <div class="text-xl font-bold text-gray-800 leading-tight">${item.acType} ${item.model}</div>
+                            </div>
+                            <button onclick="deleteItem(${index})" class="p-2 text-gray-200 hover:text-red-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2 pt-3 border-t border-gray-50 text-center">
+                            <!-- 庫存管理 -->
+                            <div class="bg-gray-50 rounded-xl p-2 flex flex-col items-center justify-between">
+                                <div>
+                                    <div class="text-[10px] text-gray-500 uppercase font-bold">庫存</div>
+                                    <div class="text-xl font-black text-blue-600 leading-none my-2">${item.count}</div>
+                                </div>
+                                <div class="flex gap-1 w-full mt-auto">
+                                    <button onclick="updateCount(${index}, -1)" class="flex-1 h-8 bg-white text-gray-800 rounded-lg flex items-center justify-center text-lg shadow-sm active:bg-red-500 active:text-white transition-colors" ${item.count <= 0 ? 'disabled style="opacity:0.5;"' : ''}>
+                                        －
+                                    </button>
+                                    <button onclick="updateCount(${index}, 1)" class="flex-1 h-8 bg-white text-gray-800 rounded-lg flex items-center justify-center text-lg shadow-sm active:bg-blue-600 active:text-white transition-colors">
+                                        ＋
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 製作中管理 -->
+                            <div class="bg-orange-50 rounded-xl p-2 flex flex-col items-center justify-between border border-orange-100">
+                                <div>
+                                    <div class="text-[10px] text-orange-500 uppercase font-bold">製作中</div>
+                                    <div class="text-xl font-black text-orange-600 leading-none my-2">${item.inProduction}</div>
+                                </div>
+                                <button onclick="startProduction(${index})" 
+                                        class="w-full h-8 mt-auto ${item.count > 0 ? 'bg-orange-500' : 'bg-gray-200'} text-white rounded-lg flex items-center justify-center text-sm shadow-sm active:scale-95 transition-all" ${item.count <= 0 ? 'disabled' : ''}>
+                                    🔨
+                                </button>
+                            </div>
+
+                            <!-- 製作完成管理 -->
+                            <div class="bg-green-50 rounded-xl p-2 flex flex-col items-center justify-between border border-green-100">
+                                <div>
+                                    <div class="text-[10px] text-green-500 uppercase font-bold">已完成</div>
+                                    <div class="text-xl font-black text-green-600 leading-none my-2">${item.completed}</div>
+                                </div>
+                                <button onclick="finishProduction(${index})" 
+                                        class="w-full h-8 mt-auto ${item.inProduction > 0 ? 'bg-green-500' : 'bg-gray-200'} text-white rounded-lg flex items-center justify-center text-sm shadow-sm active:scale-95 transition-all" ${item.inProduction <= 0 ? 'disabled' : ''}>
+                                    ✅
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 處理空狀態提示
+            if (renderedCount === 0) {
+                if (planes.length === 0) {
+                    list.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm w-full">尚無收藏，快新增第一架飛機吧！</div>`;
+                } else {
+                    list.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm w-full">目前分類找不到符合的模型</div>`;
+                }
+            }
+
+            totalTypesEl.innerText = planes.length;
+            totalPlanesEl.innerText = totalPlanes;
+            totalInProductionEl.innerText = totalInProduction;
+            if(totalCompletedEl) totalCompletedEl.innerText = totalCompleted;
+            localStorage.setItem('plane_db', JSON.stringify(planes));
+        }
+
+        async function syncToCloud(item) {
+            if (!gasUrl) return;
+            try {
+                await fetch(gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(item)
+                });
+                showToast("雲端同步成功");
+            } catch (e) {
+                console.error("同步失敗", e);
+            }
+        }
+
+        function addPlane() {
+            const brand = document.getElementById('brand').value.trim();
+            const nation = document.getElementById('nation').value.trim();
+            const acType = document.getElementById('acType').value.trim();
+            const model = document.getElementById('model').value.trim();
+
+            if (!acType || !model) {
+                showToast("請至少填寫機型與型號");
+                return;
+            }
+
+            const newItem = { 
+                brand, 
+                nation, 
+                acType, 
+                model, 
+                count: 1,
+                inProduction: 0,
+                completed: 0 
+            };
+            planes.push(newItem);
+            render();
+            syncToCloud(newItem);
+
+            document.getElementById('brand').value = '';
+            document.getElementById('nation').value = '';
+            document.getElementById('acType').value = '';
+            document.getElementById('model').value = '';
+        }
+
+        function updateCount(index, val) {
+            if (planes[index].count + val < 0) return; // 避免庫存變為負數
+            planes[index].count += val;
+            render();
+            syncToCloud(planes[index]);
+        }
+
+        function startProduction(index) {
+            if (planes[index].count > 0) {
+                planes[index].count -= 1;
+                planes[index].inProduction += 1;
+                render();
+                syncToCloud(planes[index]);
+                showToast("開始製作！庫存已扣除");
+            } else {
+                showToast("庫存不足，無法開始製作");
+            }
+        }
+
+        function finishProduction(index) {
+            if (planes[index].inProduction > 0) {
+                planes[index].inProduction -= 1;
+                planes[index].completed += 1;
+                render();
+                syncToCloud(planes[index]);
+                showToast("✅ 恭喜！模型製作完成");
+            } else {
+                showToast("目前沒有正在製作中的模型");
+            }
+        }
+
+        function deleteItem(index) {
+            if(confirm("確定要移除這項紀錄嗎？")) {
+                planes.splice(index, 1);
+                render();
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.opacity = "1";
+            setTimeout(() => t.style.opacity = "0", 2000);
+        }
+
+        function exportData() {
+            let csv = "廠牌,國籍,機型,型號,庫存數量,製作中數量,製作完成數量\n";
+            planes.forEach(p => {
+                csv += `${p.brand},${p.nation},${p.acType},${p.model},${p.count},${p.inProduction || 0},${p.completed || 0}\n`;
+            });
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "my_airplanes_status.csv";
+            link.click();
+        }
+    </script>
+</body>
+</html>
